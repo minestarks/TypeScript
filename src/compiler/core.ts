@@ -46,6 +46,29 @@ namespace ts {
         return map;
     }
 
+    //!!! This replaces for-in
+    export function forEachKeyInMap<T>(map: Map<{}>, action: (key: MapKey) => T | undefined): T | undefined {
+        return forEachInMap(map, (_value, key) => action(key));
+    }
+
+    //Use this a lot
+    export function forEachInMap<T, U>(map: Map<T>, action: (value: T, key: Mapkey) => U | undefined): U | undefined {
+        let result: U | undefined;
+        map.forEach((value, key) => {
+            if (result === undefined) {
+                result = action(value, key);
+            }
+        });
+        return result;
+    }
+
+    //Kill somehow?
+    export function setAndReturn<T>(map: Map<T>, key: MapKey, value: T): T {
+        map.set(key, value);
+        return value;
+    }
+
+
     export function createFileMap<T>(keyMapper?: (key: string) => string): FileMap<T> {
         let files = createMap<T>();
         return {

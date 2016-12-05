@@ -4,8 +4,18 @@ namespace ts {
         [index: string]: T;
     }
 
-    export interface Map<T> extends MapLike<T> {
-        __mapBrand: any;
+    //???
+    export type MapKey = string; //| number
+
+    export interface Map<T> {//extends MapLike<T> {
+        //__mapBrand: any;
+
+        //leaving out clear() and delete() because I can!
+
+        forEach(action: (value: T, key: MapKey) => void): void;
+        get(key: MapKey): T;
+        has(key: MapKey): T;
+        set(key: MapKey, value: T): void;
     }
 
     // branded string type used to store absolute, normalized and canonicalized paths
