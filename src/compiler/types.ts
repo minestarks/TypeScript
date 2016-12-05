@@ -14,7 +14,7 @@ namespace ts {
 
         forEach(action: (value: T, key: MapKey) => void): void;
         get(key: MapKey): T;
-        has(key: MapKey): T;
+        has(key: MapKey): boolean;
         set(key: MapKey, value: T): void;
     }
 
