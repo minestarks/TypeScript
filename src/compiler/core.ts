@@ -29,37 +29,62 @@ namespace ts {
     export const collator: { compare(a: string, b: string): number } = typeof Intl === "object" && typeof Intl.Collator === "function" ? new Intl.Collator() : undefined;
 
     export function createMap<T>(template?: MapLike<T>): Map<T> {
-        const map: Map<T> = createObject(null); // tslint:disable-line:no-null-keyword
-
-        // Using 'delete' on an object causes V8 to put the object in dictionary mode.
-        // This disables creation of hidden classes, which are expensive when an object is
-        // constantly changing shape.
-        map["__"] = undefined;
-        delete map["__"];
+        const map: Map<T> = createMapWorker<T>();
 
         // Copies keys/values from template. Note that for..in will not throw if
         // template is undefined, and instead will just exit the loop.
         for (const key in template) if (hasOwnProperty.call(template, key)) {
-            map[key] = template[key];
+            map.set(key, template[key]);
         }
 
         return map;
     }
 
+    // The global Map object. This may not be available, so we must test for it.
+    declare const Map: { new<T>(): Map<T> } | undefined;
+    const createMapWorker: <T>() => Map<T> = typeof Map !== "undefined" ? (() => new Map<any>()) : shimCreateMap();
+    function shimCreateMap(): <T>() => Map<T> {
+        // Leave the class inside the function so it doesn't get compiled if not necessary.
+        class ShimMap<T> implements Map<T> {
+            private data = createDictionaryModeObject<T>();
+
+            constructor() {}
+
+            delete(key: MapKey): boolean {
+                const had = this.has(key);
+                if (had) {
+                    delete this.data[key];
+                }
+                return had;
+            }
+
+            get(key: MapKey): T {
+                return this.data[key];
+            }
+
+            has(key: MapKey): boolean {
+                // tslint:disable-next-line:no-in-operator
+                return key in this.data;
+            }
+
+            set(key: MapKey, value: T): this {
+                this.data[key] = value;
+                return this;
+            }
+
+            forEach(action: (value: T, key: string) => void): void {
+                for (const key in this.data) {
+                    action(this.data[key], key);
+                }
+            }
+        }
+
+        return <T>() => new ShimMap<T>();
+    }
+
     //!!! This replaces for-in
     export function forEachKeyInMap<T>(map: Map<{}>, action: (key: string) => T | undefined): T | undefined {
         return forEachInMap(map, (_value, key) => action(key));
-    }
-
-    //Use this a lot
-    export function forEachInMap<T, U>(map: Map<T>, action: (value: T, key: string) => U | undefined): U | undefined {
-        let result: U | undefined;
-        map.forEach((value, key) => {
-            if (result === undefined) {
-                result = action(value, key);
-            }
-        });
-        return result;
     }
 
     //Kill somehow?
@@ -105,7 +130,7 @@ namespace ts {
 
         function forEachValueInMap(f: (key: Path, value: T) => void) {
             for (const key in files) {
-                f(<Path>key, files[key]);
+                f(<Path>key, files.get(key));
             }
         }
 
@@ -119,20 +144,19 @@ namespace ts {
 
         // path should already be well-formed so it does not need to be normalized
         function get(path: Path): T {
-            return files[toKey(path)];
+            return files.get(toKey(path));
         }
 
         function set(path: Path, value: T) {
-            files[toKey(path)] = value;
+            files.set(toKey(path), value);
         }
 
         function contains(path: Path) {
-            return toKey(path) in files;
+            return files.has(toKey(path));
         }
 
         function remove(path: Path) {
-            const key = toKey(path);
-            delete files[key];
+            files.delete(toKey(path));
         }
 
         function clear() {
@@ -840,6 +864,14 @@ namespace ts {
         });
         return keys;
     }
+    //new
+    export function getMapValues<T>(map: Map<T>): T[] {
+        const values: T[] = [];
+        map.forEach(value => {
+            values.push(value);
+        });
+        return values;
+    }
 
     /**
      * Enumerates the properties of a Map<T>, invoking a callback and returning the first truthy result.
@@ -847,12 +879,21 @@ namespace ts {
      * @param map A map for which properties should be enumerated.
      * @param callback A callback to invoke for each property.
      */
-    //kill???
-    export function forEachProperty<T, U>(map: Map<T>, callback: (value: T, key: string) => U): U {
-        let result: U;
-        for (const key in map) {
-            if (result = callback(map[key], key)) break;
-        }
+    //export function forEachProperty<T, U>(map: Map<T>, callback: (value: T, key: string) => U): U {
+    //    let result: U;
+    //    for (const key in map) {
+    //        if (result = callback(map[key], key)) break;
+    //    }
+    //    return result;
+    //}
+    //Use this a lot
+    export function forEachInMap<T, U>(map: Map<T>, action: (value: T, key: string) => U | undefined): U | undefined {
+        let result: U | undefined;
+        map.forEach((value, key) => {
+            if (result === undefined) {
+                result = action(value, key);
+            }
+        });
         return result;
     }
 
@@ -862,11 +903,18 @@ namespace ts {
      * @param map A map whose properties should be tested.
      * @param predicate An optional callback used to test each property.
      */
-    export function someProperties<T>(map: Map<T>, predicate?: (value: T, key: string) => boolean) {
-        for (const key in map) {
-            if (!predicate || predicate(map[key], key)) return true;
-        }
-        return false;
+    //export function someProperties<T>(map: Map<T>, predicate?: (value: T, key: string) => boolean) {
+    //    for (const key in map) {
+    //        if (!predicate || predicate(map[key], key)) return true;
+    //    }
+    //    return false;
+    //}
+    export function someInMap<T>(map: Map<T>, predicate?: (value: T, key: string) => boolean): boolean {
+        let result = false;
+        map.forEach((value, key) => {
+            result = result || predicate(value, key);
+        });
+        return result;
     }
 
     /**
@@ -876,23 +924,16 @@ namespace ts {
      * @param target A map to which properties should be copied.
      */
     //kill???
-    export function copyProperties<T>(source: Map<T>, target: MapLike<T>): void {
-        for (const key in source) {
-            target[key] = source[key];
-        }
-    }
-    //new
+    //export function copyProperties<T>(source: Map<T>, target: MapLike<T>): void {
+    //    for (const key in source) {
+    //        target[key] = source[key];
+    //    }
+    //}
+    //rename
     export function copyMapProperties<T>(source: Map<T>, target: Map<T>): void {
         source.forEach((value, key) => {
             target.set(key, value);
         });
-    }
-
-    export function appendProperty<T>(map: Map<T>, key: string | number, value: T): Map<T> {
-        if (key === undefined || value === undefined) return map;
-        if (map === undefined) map = createMap<T>();
-        map[key] = value;
-        return map;
     }
 
     export function assign<T1 extends MapLike<{}>, T2, T3>(t: T1, arg1: T2, arg2: T3): T1 & T2 & T3;
@@ -917,13 +958,13 @@ namespace ts {
      * @param callback An aggregation function that is called for each entry in the map
      * @param initial The initial value for the reduction.
      */
-    export function reduceProperties<T, U>(map: Map<T>, callback: (aggregate: U, value: T, key: string) => U, initial: U): U {
-        let result = initial;
-        for (const key in map) {
-            result = callback(result, map[key], String(key));
-        }
-        return result;
-    }
+    //export function reduceProperties<T, U>(map: Map<T>, callback: (aggregate: U, value: T, key: string) => U, initial: U): U {
+    //    let result = initial;
+    //    for (const key in map) {
+    //        result = callback(result, map[key], String(key));
+    //    }
+    //    return result;
+    //}
 
     /**
      * Reduce the properties defined on a map-like (but not from its prototype chain).
@@ -977,23 +1018,18 @@ namespace ts {
     export function arrayToMap<T, U>(array: T[], makeKey: (value: T) => string, makeValue?: (value: T) => U): Map<T | U> {
         const result = createMap<T | U>();
         for (const value of array) {
-            result[makeKey(value)] = makeValue ? makeValue(value) : value;
+            result.set(makeKey(value), makeValue ? makeValue(value) : value);
         }
         return result;
     }
 
     export function isEmpty<T>(map: Map<T>) {
-        for (const id in map) {
-            if (hasProperty(map, id)) {
-                return false;
-            }
-        }
-        return true;
+        return !someInMap(map, () => true);
     }
 
     export function cloneMap<T>(map: Map<T>) {
         const clone = createMap<T>();
-        copyProperties(map, clone);
+        copyMapProperties(map, clone);
         return clone;
     }
 
@@ -1023,13 +1059,13 @@ namespace ts {
      * Creates the array if it does not already exist.
      */
     export function multiMapAdd<V>(map: Map<V[]>, key: string | number, value: V): V[] {
-        const values = map[key];
+        const values = map.get(key);
         if (values) {
             values.push(value);
             return values;
         }
         else {
-            return map[key] = [value];
+            return setAndReturn(map, key, [value]);
         }
     }
 
@@ -1039,11 +1075,11 @@ namespace ts {
      * Does nothing if `key` is not in `map`, or `value` is not in `map[key]`.
      */
     export function multiMapRemove<V>(map: Map<V[]>, key: string, value: V): void {
-        const values = map[key];
+        const values = map.get(key);
         if (values) {
             unorderedRemoveItem(values, value);
             if (!values.length) {
-                delete map[key];
+                map.delete(key);
             }
         }
     }
@@ -1149,7 +1185,7 @@ namespace ts {
     export let localizedDiagnosticMessages: Map<string> = undefined;
 
     export function getLocaleSpecificMessage(message: DiagnosticMessage) {
-        return localizedDiagnosticMessages && localizedDiagnosticMessages[message.key] || message.message;
+        return localizedDiagnosticMessages && localizedDiagnosticMessages.get(message.key) || message.message;
     }
 
     export function createFileDiagnostic(file: SourceFile, start: number, length: number, message: DiagnosticMessage, ...args: (string | number)[]): Diagnostic;

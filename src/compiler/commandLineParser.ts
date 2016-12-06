@@ -1263,8 +1263,8 @@ namespace ts {
             }
         }
 
-        const literalFiles = reduceProperties(literalFileMap, addFileToOutput, []);
-        const wildcardFiles = reduceProperties(wildcardFileMap, addFileToOutput, []);
+        const literalFiles = getMapValues(literalFileMap);//reduceProperties(literalFileMap, addFileToOutput, []);
+        const wildcardFiles = getMapValues(literalFileMap);//reduceProperties(wildcardFileMap, addFileToOutput, []);
         wildcardFiles.sort(host.useCaseSensitiveFileNames ? compareStrings : compareStringsCaseInsensitive);
         return {
             fileNames: literalFiles.concat(wildcardFiles),
@@ -1397,17 +1397,6 @@ namespace ts {
             const lowerPriorityPath = keyMapper(changeExtension(file, lowerPriorityExtension));
             wildcardFiles.delete(lowerPriorityPath);
         }
-    }
-
-    /**
-     * Adds a file to an array of files.
-     *
-     * @param output The output array.
-     * @param file The file path.
-     */
-    function addFileToOutput(output: string[], file: string) {
-        output.push(file);
-        return output;
     }
 
     /**

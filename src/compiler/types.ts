@@ -16,9 +16,9 @@ namespace ts {
         forEach(action: (value: T, key: string) => void): void;
         get(key: MapKey): T;
         has(key: MapKey): boolean;
-        set(key: MapKey, value: T): void;
+        set(key: MapKey, value: T): this;
         //This is in fact used...
-        delete(key: MapKey): void;
+        delete(key: MapKey): boolean;
     }
 
     // branded string type used to store absolute, normalized and canonicalized paths

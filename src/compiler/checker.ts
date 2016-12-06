@@ -1,4 +1,4 @@
-/// <reference path="moduleNameResolver.ts"/>
+﻿/// <reference path="moduleNameResolver.ts"/>
 /// <reference path="binder.ts"/>
 
 /* @internal */
@@ -1780,7 +1780,7 @@ namespace ts {
                 }
 
                 // Check if symbol is any of the alias
-                return forEachProperty(symbols, symbolFromSymbolTable => {
+                return forEachInMap(symbols, symbolFromSymbolTable => {
                     if (symbolFromSymbolTable.flags & SymbolFlags.Alias
                         && symbolFromSymbolTable.name !== "export="
                         && !getDeclarationOfKind(symbolFromSymbolTable, SyntaxKind.ExportSpecifier)) {
@@ -19891,7 +19891,7 @@ namespace ts {
                 // otherwise - check if at least one export is value
                 symbolLinks.exportsSomeValue = hasExportAssignment
                     ? !!(moduleSymbol.flags & SymbolFlags.Value)
-                    : forEachProperty(getExportsOfModule(moduleSymbol), isValue);
+                    : forEachInMap(getExportsOfModule(moduleSymbol), isValue);
             }
 
             return symbolLinks.exportsSomeValue;
@@ -20300,7 +20300,7 @@ namespace ts {
                 fileToDirective = createFileMap<string>();
                 resolvedTypeReferenceDirectives.forEach((resolvedDirective, key) => {
                     if (!resolvedDirective) {
-                        continue;
+                        return;
                     }
                     const file = host.getSourceFile(resolvedDirective.resolvedFileName);
                     fileToDirective.set(file.path, key);

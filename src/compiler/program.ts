@@ -1292,20 +1292,20 @@ namespace ts {
 
                 // If the file was previously found via a node_modules search, but is now being processed as a root file,
                 // then everything it sucks in may also be marked incorrectly, and needs to be checked again.
-                if (file && sourceFilesFoundSearchingNodeModules[file.path] && currentNodeModulesDepth == 0) {
-                    sourceFilesFoundSearchingNodeModules[file.path] = false;
+                if (file && sourceFilesFoundSearchingNodeModules.get(file.path) && currentNodeModulesDepth == 0) {
+                    sourceFilesFoundSearchingNodeModules.set(file.path, false);
                     if (!options.noResolve) {
                         processReferencedFiles(file, isDefaultLib);
                         processTypeReferenceDirectives(file);
                     }
 
-                    modulesWithElidedImports[file.path] = false;
+                    modulesWithElidedImports.set(file.path, false);
                     processImportedModules(file);
                 }
                 // See if we need to reprocess the imports due to prior skipped imports
-                else if (file && modulesWithElidedImports[file.path]) {
+                else if (file && modulesWithElidedImports.get(file.path)) {
                     if (currentNodeModulesDepth < maxNodeModuleJsDepth) {
-                        modulesWithElidedImports[file.path] = false;
+                        modulesWithElidedImports.set(file.path, false);
                         processImportedModules(file);
                     }
                 }
@@ -1326,7 +1326,7 @@ namespace ts {
 
             filesByName.set(path, file);
             if (file) {
-                sourceFilesFoundSearchingNodeModules[path] = (currentNodeModulesDepth > 0);
+                sourceFilesFoundSearchingNodeModules.set(path, currentNodeModulesDepth > 0);
                 file.path = path;
 
                 if (host.useCaseSensitiveFileNames()) {
@@ -1387,7 +1387,7 @@ namespace ts {
             refFile?: SourceFile, refPos?: number, refEnd?: number): void {
 
             // If we already found this library as a primary reference - nothing to do
-            const previousResolution = resolvedTypeReferenceDirectives[typeReferenceDirective];
+            const previousResolution = resolvedTypeReferenceDirectives.get(typeReferenceDirective);
             if (previousResolution && previousResolution.primary) {
                 return;
             }
@@ -1427,7 +1427,7 @@ namespace ts {
             }
 
             if (saveResolution) {
-                resolvedTypeReferenceDirectives[typeReferenceDirective] = resolvedTypeReferenceDirective;
+                resolvedTypeReferenceDirectives.set(typeReferenceDirective, resolvedTypeReferenceDirective);
             }
         }
 
@@ -1480,7 +1480,7 @@ namespace ts {
                     const shouldAddFile = resolvedFileName && !getResolutionDiagnostic(options, resolution) && !options.noResolve && i < file.imports.length && !elideImport;
 
                     if (elideImport) {
-                        modulesWithElidedImports[file.path] = true;
+                        modulesWithElidedImports.set(file.path, true);
                     }
                     else if (shouldAddFile) {
                         const path = toPath(resolvedFileName, currentDirectory, getCanonicalFileName);

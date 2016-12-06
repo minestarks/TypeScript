@@ -508,7 +508,7 @@ namespace ts.FindAllReferences {
                     result.push(ctrKeyword);
                 }
 
-                forEachProperty(classSymbol.exports, member => {
+                forEachInMap(classSymbol.exports, member => {
                     const decl = member.valueDeclaration;
                     if (decl && decl.kind === SyntaxKind.MethodDeclaration) {
                         const body = (<MethodDeclaration>decl).body;
