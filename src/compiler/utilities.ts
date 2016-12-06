@@ -2216,22 +2216,16 @@ namespace ts {
         }
 
         function reattachFileDiagnostics(newFile: SourceFile): void {
-            if (!hasProperty(fileDiagnostics, newFile.fileName)) {
-                return;
-            }
-
-            for (const diagnostic of fileDiagnostics[newFile.fileName]) {
-                diagnostic.file = newFile;
-            }
+            forEach(fileDiagnostics.get(newFile.fileName), diagnostic => diagnostic.file = newFile);
         }
 
         function add(diagnostic: Diagnostic): void {
             let diagnostics: Diagnostic[];
             if (diagnostic.file) {
-                diagnostics = fileDiagnostics[diagnostic.file.fileName];
+                diagnostics = fileDiagnostics.get(diagnostic.file.fileName);
                 if (!diagnostics) {
                     diagnostics = [];
-                    fileDiagnostics[diagnostic.file.fileName] = diagnostics;
+                    fileDiagnostics.set(diagnostic.file.fileName, diagnostics);
                 }
             }
             else {
@@ -2251,7 +2245,7 @@ namespace ts {
         function getDiagnostics(fileName?: string): Diagnostic[] {
             sortAndDeduplicate();
             if (fileName) {
-                return fileDiagnostics[fileName] || [];
+                return fileDiagnostics.get(fileName) || [];
             }
 
             const allDiagnostics: Diagnostic[] = [];
@@ -2261,9 +2255,9 @@ namespace ts {
 
             forEach(nonFileDiagnostics, pushDiagnostic);
 
-            for (const key in fileDiagnostics) {
-                forEach(fileDiagnostics[key], pushDiagnostic);
-            }
+            fileDiagnostics.forEach(diagnostics => {
+                forEach(diagnostics, pushDiagnostic);
+            });
 
             return sortAndDeduplicateDiagnostics(allDiagnostics);
         }
@@ -2277,7 +2271,7 @@ namespace ts {
             nonFileDiagnostics = sortAndDeduplicateDiagnostics(nonFileDiagnostics);
 
             for (const key in fileDiagnostics) {
-                fileDiagnostics[key] = sortAndDeduplicateDiagnostics(fileDiagnostics[key]);
+                fileDiagnostics.set(key, sortAndDeduplicateDiagnostics(fileDiagnostics.get(key)));
             }
         }
     }
@@ -2315,7 +2309,7 @@ namespace ts {
         return s;
 
         function getReplacement(c: string) {
-            return escapedCharsMap[c] || get16BitUnicodeEscapeSequence(c.charCodeAt(0));
+            return escapedCharsMap.get(c) || get16BitUnicodeEscapeSequence(c.charCodeAt(0));
         }
     }
 
@@ -3370,13 +3364,14 @@ namespace ts {
     export function formatSyntaxKind(kind: SyntaxKind): string {
         const syntaxKindEnum = (<any>ts).SyntaxKind;
         if (syntaxKindEnum) {
-            if (syntaxKindCache[kind]) {
-                return syntaxKindCache[kind];
+            const cached = syntaxKindCache.get(kind);
+            if (cached !== undefined) {
+                return cached;
             }
 
             for (const name in syntaxKindEnum) {
                 if (syntaxKindEnum[name] === kind) {
-                    return syntaxKindCache[kind] = kind.toString() + " (" + name + ")";
+                    return setAndReturn(syntaxKindCache, kind, kind.toString() + " (" + name + ")");
                 }
             }
         }

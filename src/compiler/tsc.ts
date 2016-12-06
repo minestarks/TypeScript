@@ -378,9 +378,8 @@ namespace ts {
         }
 
         function cachedFileExists(fileName: string): boolean {
-            return fileName in cachedExistingFiles
-                ? cachedExistingFiles[fileName]
-                : cachedExistingFiles[fileName] = hostFileExists(fileName);
+            const fileExists = cachedExistingFiles.get(fileName);
+            return fileExists !== undefined ? fileExists : setAndReturn(cachedExistingFiles, fileName, hostFileExists(fileName));
         }
 
         function getSourceFile(fileName: string, languageVersion: ScriptTarget, onError?: (message: string) => void) {
@@ -680,7 +679,7 @@ namespace ts {
                 for (const key in typeMap) {
                     options.push(`'${key}'`);
                 }
-                optionsDescriptionMap[description] = options;
+                optionsDescriptionMap.set(description, options);
             }
             else {
                 description = getDiagnosticText(option.description);
@@ -702,7 +701,7 @@ namespace ts {
         for (let i = 0; i < usageColumn.length; i++) {
             const usage = usageColumn[i];
             const description = descriptionColumn[i];
-            const kindsList = optionsDescriptionMap[description];
+            const kindsList = optionsDescriptionMap.get(description);
             output.push(usage + makePadding(marginLength - usage.length + 2) + description + sys.newLine);
 
             if (kindsList) {

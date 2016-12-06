@@ -530,7 +530,7 @@ namespace ts {
                 break;
 
             default:
-                const edgeTraversalPath = nodeEdgeTraversalMap[kind];
+                const edgeTraversalPath = nodeEdgeTraversalMap.get(kind);
                 if (edgeTraversalPath) {
                     for (const edge of edgeTraversalPath) {
                         const value = (<MapLike<any>>node)[edge.name];
@@ -1188,10 +1188,10 @@ namespace ts {
 
             default:
                 let updated: Node & MapLike<any>;
-                const edgeTraversalPath = nodeEdgeTraversalMap[kind];
+                const edgeTraversalPath = nodeEdgeTraversalMap.get(kind);
                 if (edgeTraversalPath) {
                     for (const edge of edgeTraversalPath) {
-                        const value = <Node | NodeArray<Node>>(<Node & Map<any>>node)[edge.name];
+                        const value = <Node | NodeArray<Node>>(<Node & MapLike<any>>node)[edge.name];
                         if (value !== undefined) {
                             const visited = isArray(value)
                                 ? visitNodes(value, visitor, edge.test, 0, value.length, edge.parenthesize, node)

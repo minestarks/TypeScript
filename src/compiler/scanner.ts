@@ -276,7 +276,7 @@ namespace ts {
     function makeReverseMap(source: Map<number>): string[] {
         const result: string[] = [];
         for (const name in source) {
-            result[source[name]] = name;
+            result[source.get(name)] = name;
         }
         return result;
     }
@@ -289,7 +289,7 @@ namespace ts {
 
     /* @internal */
     export function stringToToken(s: string): SyntaxKind {
-        return textToToken[s];
+        return textToToken.get(s);
     }
 
     /* @internal */
@@ -1184,7 +1184,7 @@ namespace ts {
             if (len >= 2 && len <= 11) {
                 const ch = tokenValue.charCodeAt(0);
                 if (ch >= CharacterCodes.a && ch <= CharacterCodes.z && hasOwnProperty.call(textToToken, tokenValue)) {
-                    return token = textToToken[tokenValue];
+                    return token = textToToken.get(tokenValue);
                 }
             }
             return token = SyntaxKind.Identifier;

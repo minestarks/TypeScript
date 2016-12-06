@@ -5,17 +5,20 @@ namespace ts {
     }
 
     //???
-    export type MapKey = string; //| number
+    export type MapKey = string | number; //| number
 
     export interface Map<T> {//extends MapLike<T> {
         //__mapBrand: any;
 
-        //leaving out clear() and delete() because I can!
+        //leaving out clear() because I can!
 
-        forEach(action: (value: T, key: MapKey) => void): void;
+        //forEach always gives strings!
+        forEach(action: (value: T, key: string) => void): void;
         get(key: MapKey): T;
         has(key: MapKey): boolean;
         set(key: MapKey, value: T): void;
+        //This is in fact used...
+        delete(key: MapKey): void;
     }
 
     // branded string type used to store absolute, normalized and canonicalized paths

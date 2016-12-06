@@ -47,12 +47,12 @@ namespace ts {
     }
 
     //!!! This replaces for-in
-    export function forEachKeyInMap<T>(map: Map<{}>, action: (key: MapKey) => T | undefined): T | undefined {
+    export function forEachKeyInMap<T>(map: Map<{}>, action: (key: string) => T | undefined): T | undefined {
         return forEachInMap(map, (_value, key) => action(key));
     }
 
     //Use this a lot
-    export function forEachInMap<T, U>(map: Map<T>, action: (value: T, key: Mapkey) => U | undefined): U | undefined {
+    export function forEachInMap<T, U>(map: Map<T>, action: (value: T, key: string) => U | undefined): U | undefined {
         let result: U | undefined;
         map.forEach((value, key) => {
             if (result === undefined) {
@@ -66,6 +66,28 @@ namespace ts {
     export function setAndReturn<T>(map: Map<T>, key: MapKey, value: T): T {
         map.set(key, value);
         return value;
+    }
+
+    //new fn
+    function createDictionaryModeObject<T>(): MapLike<T> {
+        const map = createObject(null); // tslint:disable-line:no-null-keyword
+
+        // Using 'delete' on an object causes V8 to put the object in dictionary mode.
+        // This disables creation of hidden classes, which are expensive when an object is
+        // constantly changing shape.
+        map["__"] = undefined;
+        delete map["__"];
+
+        return map;
+    }
+
+    //new fn
+    export function mapLikeOfMap<T>(map: Map<T>): MapLike<T> {
+        const obj = createDictionaryModeObject<T>();
+        map.forEach((value, key) => {
+            obj[key] = value;
+        });
+        return obj;
     }
 
 
@@ -802,11 +824,20 @@ namespace ts {
      *
      * @param map A map-like.
      */
+    //kill???
     export function getOwnKeys<T>(map: MapLike<T>): string[] {
         const keys: string[] = [];
         for (const key in map) if (hasOwnProperty.call(map, key)) {
             keys.push(key);
         }
+        return keys;
+    }
+    //new
+    export function getMapKeys<T>(map: Map<T>): string[] {
+        const keys: string[] = [];
+        forEachKeyInMap(map, key => {
+            keys.push(key);
+        });
         return keys;
     }
 
@@ -816,6 +847,7 @@ namespace ts {
      * @param map A map for which properties should be enumerated.
      * @param callback A callback to invoke for each property.
      */
+    //kill???
     export function forEachProperty<T, U>(map: Map<T>, callback: (value: T, key: string) => U): U {
         let result: U;
         for (const key in map) {
@@ -843,10 +875,17 @@ namespace ts {
      * @param source A map from which properties should be copied.
      * @param target A map to which properties should be copied.
      */
+    //kill???
     export function copyProperties<T>(source: Map<T>, target: MapLike<T>): void {
         for (const key in source) {
             target[key] = source[key];
         }
+    }
+    //new
+    export function copyMapProperties<T>(source: Map<T>, target: Map<T>): void {
+        source.forEach((value, key) => {
+            target.set(key, value);
+        });
     }
 
     export function appendProperty<T>(map: Map<T>, key: string | number, value: T): Map<T> {

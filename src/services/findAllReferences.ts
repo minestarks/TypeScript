@@ -96,7 +96,7 @@ namespace ts.FindAllReferences {
 
                 const nameTable = getNameTable(sourceFile);
 
-                if (nameTable[internedName] !== undefined) {
+                if (nameTable.get(internedName) !== undefined) {
                     result = result || [];
                     getReferencesInNode(sourceFile, symbol, declaredName, node, searchMeaning, findInStrings, findInComments, result, symbolToIndex);
                 }
@@ -501,7 +501,7 @@ namespace ts.FindAllReferences {
             function findOwnConstructorCalls(classSymbol: Symbol): Node[] {
                 const result: Node[] = [];
 
-                for (const decl of classSymbol.members["__constructor"].declarations) {
+                for (const decl of classSymbol.members.get("__constructor").declarations) {
                     Debug.assert(decl.kind === SyntaxKind.Constructor);
                     const ctrKeyword = decl.getChildAt(0);
                     Debug.assert(ctrKeyword.kind === SyntaxKind.ConstructorKeyword);
@@ -528,7 +528,7 @@ namespace ts.FindAllReferences {
             /** Find references to `super` in the constructor of an extending class.  */
             function superConstructorAccesses(cls: ClassLikeDeclaration): Node[] {
                 const symbol = cls.symbol;
-                const ctr = symbol.members["__constructor"];
+                const ctr = symbol.members.get("__constructor");
                 if (!ctr) {
                     return [];
                 }
@@ -716,11 +716,11 @@ namespace ts.FindAllReferences {
 
                 const key = getSymbolId(symbol) + "," + getSymbolId(parent);
                 if (key in cachedResults) {
-                    return cachedResults[key];
+                    return cachedResults.get(key);
                 }
 
                 // Set the key so that we don't infinitely recurse
-                cachedResults[key] = false;
+                cachedResults.set(key, false);
 
                 const inherits = forEach(symbol.getDeclarations(), declaration => {
                     if (isClassLike(declaration)) {
@@ -744,7 +744,7 @@ namespace ts.FindAllReferences {
                     return false;
                 });
 
-                cachedResults[key] = inherits;
+                cachedResults.set(key, inherits);
                 return inherits;
             }
 
@@ -1105,7 +1105,7 @@ namespace ts.FindAllReferences {
                         }
 
                         // Visit the typeReference as well to see if it directly or indirectly use that property
-                        previousIterationSymbolsCache[symbol.name] = symbol;
+                        previousIterationSymbolsCache.set(symbol.name, symbol);
                         getPropertySymbolsFromBaseTypes(type.symbol, propertyName, result, previousIterationSymbolsCache);
                     }
                 }

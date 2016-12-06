@@ -271,7 +271,7 @@ namespace ts {
             }
             for (const directive of typeReferenceDirectives) {
                 if (!(directive in usedTypeDirectiveReferences)) {
-                    usedTypeDirectiveReferences[directive] = directive;
+                    usedTypeDirectiveReferences.set(directive, directive);
                 }
             }
         }

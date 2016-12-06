@@ -114,7 +114,7 @@ namespace ts {
                 return true;
             }
             if (sys.directoryExists(directoryPath)) {
-                existingDirectories[directoryPath] = true;
+                existingDirectories.set(directoryPath, true);
                 return true;
             }
             return false;
@@ -139,7 +139,7 @@ namespace ts {
             const mtimeBefore = sys.getModifiedTime(fileName);
 
             if (mtimeBefore && fileName in outputFingerprints) {
-                const fingerprint = outputFingerprints[fileName];
+                const fingerprint = outputFingerprints.get(fileName);
 
                 // If output has not been changed, and the file has no external modification
                 if (fingerprint.byteOrderMark === writeByteOrderMark &&
@@ -153,11 +153,11 @@ namespace ts {
 
             const mtimeAfter = sys.getModifiedTime(fileName);
 
-            outputFingerprints[fileName] = {
+            outputFingerprints.set(fileName, {
                 hash,
                 byteOrderMark: writeByteOrderMark,
                 mtime: mtimeAfter
-            };
+            });
         }
 
         function writeFile(fileName: string, data: string, writeByteOrderMark: boolean, onError?: (message: string) => void) {
@@ -277,9 +277,9 @@ namespace ts {
         const resolutions: T[] = [];
         const cache = createMap<T>();
         for (const name of names) {
-            const result = name in cache
-                ? cache[name]
-                : cache[name] = loader(name, containingFile);
+            const result = cache.has(name)
+                ? cache.get(name)
+                : setAndReturn(cache, name, loader(name, containingFile));
             resolutions.push(result);
         }
         return resolutions;
@@ -454,7 +454,7 @@ namespace ts {
                 classifiableNames = createMap<string>();
 
                 for (const sourceFile of files) {
-                    copyProperties(sourceFile.classifiableNames, classifiableNames);
+                    copyMapProperties(sourceFile.classifiableNames, classifiableNames);
                 }
             }
 
@@ -729,7 +729,7 @@ namespace ts {
         }
 
         function isSourceFileFromExternalLibrary(file: SourceFile): boolean {
-            return sourceFilesFoundSearchingNodeModules[file.path];
+            return sourceFilesFoundSearchingNodeModules.get(file.path);
         }
 
         function getDiagnosticsProducingTypeChecker() {

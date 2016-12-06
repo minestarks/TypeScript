@@ -503,7 +503,7 @@ namespace ts {
                     }
                     mergeSymbol(targetSymbol, sourceSymbol);
                 }
-            }
+            });
         }
 
         function mergeModuleAugmentation(moduleName: LiteralExpression): void {
@@ -1541,7 +1541,7 @@ namespace ts {
                     if (lookupTable && exportNode) {
                         lookupTable.set(id, {
                             specifierText: getTextOfNode(exportNode.moduleSpecifier)
-                        } as ExportCollisionTracker;
+                        } as ExportCollisionTracker);
                     }
                 }
                 else if (lookupTable && exportNode && id !== "default" && targetSymbol && resolveSymbol(targetSymbol) !== resolveSymbol(sourceSymbol)) {
@@ -1698,7 +1698,6 @@ namespace ts {
             members.forEach((symbol, id) => {
                 if (!isReservedMemberName(id)) {
                     if (!result) result = [];
-                    const symbol = members[id];
                     if (symbolIsValue(symbol)) {
                         result.push(symbol);
                     }
@@ -1816,7 +1815,7 @@ namespace ts {
             let qualify = false;
             forEachSymbolTableInScope(enclosingDeclaration, symbolTable => {
                 // If symbol of this name is not available in the symbol table we are ok
-                let symbolFromSymbolTable = symbolTable[symbol.name];
+                let symbolFromSymbolTable = symbolTable.get(symbol.name);
                 if (!symbolFromSymbolTable) {
                     // Continue to the next symbol table
                     return false;
@@ -3950,7 +3949,7 @@ namespace ts {
                     type.outerTypeParameters = outerTypeParameters;
                     type.localTypeParameters = localTypeParameters;
                     (<GenericType>type).instantiations = createMap<TypeReference>();
-                    (<GenericType>type).instantiations[getTypeListId(type.typeParameters)] = <GenericType>type;
+                    (<GenericType>type).instantiations.set(getTypeListId(type.typeParameters), <GenericType>type);
                     (<GenericType>type).target = <GenericType>type;
                     (<GenericType>type).typeArguments = type.typeParameters;
                     type.thisType = <TypeParameter>createType(TypeFlags.TypeParameter);
@@ -3993,7 +3992,7 @@ namespace ts {
                         // an instantiation of the type alias with the type parameters supplied as type arguments.
                         links.typeParameters = typeParameters;
                         links.instantiations = createMap<Type>();
-                        links.instantiations[getTypeListId(typeParameters)] = type;
+                        links.instantiations.set(getTypeListId(typeParameters), type);
                     }
                 }
                 else {
@@ -4013,7 +4012,7 @@ namespace ts {
             return expr.kind === SyntaxKind.NumericLiteral ||
                 expr.kind === SyntaxKind.PrefixUnaryExpression && (<PrefixUnaryExpression>expr).operator === SyntaxKind.MinusToken &&
                 (<PrefixUnaryExpression>expr).operand.kind === SyntaxKind.NumericLiteral ||
-                expr.kind === SyntaxKind.Identifier && !!symbol.exports[(<Identifier>expr).text];
+                expr.kind === SyntaxKind.Identifier && !!symbol.exports.get((<Identifier>expr).text);
         }
 
         function enumHasLiteralMembers(symbol: Symbol) {
@@ -4051,8 +4050,8 @@ namespace ts {
                             for (const member of (<EnumDeclaration>declaration).members) {
                                 const memberSymbol = getSymbolOfNode(member);
                                 const value = getEnumMemberValue(member);
-                                if (!memberTypes[value]) {
-                                    const memberType = memberTypes[value] = createEnumLiteralType(memberSymbol, enumType, "" + value);
+                                if (!memberTypes.has(value)) {
+                                    const memberType = setAndReturn(memberTypes, value, createEnumLiteralType(memberSymbol, enumType, "" + value));
                                     memberTypeList.push(memberType);
                                 }
                             }
@@ -4062,7 +4061,7 @@ namespace ts {
                     if (memberTypeList.length > 1) {
                         enumType.flags |= TypeFlags.Union;
                         (<EnumType & UnionType>enumType).types = memberTypeList;
-                        unionTypes[getTypeListId(memberTypeList)] = <EnumType & UnionType>enumType;
+                        unionTypes.set(getTypeListId(memberTypeList), <EnumType & UnionType>enumType);
                     }
                 }
             }
@@ -4074,7 +4073,7 @@ namespace ts {
             if (!links.declaredType) {
                 const enumType = <EnumType>getDeclaredTypeOfEnum(getParentOfSymbol(symbol));
                 links.declaredType = enumType.flags & TypeFlags.Union ?
-                    enumType.memberTypes[getEnumMemberValue(<EnumMember>symbol.valueDeclaration)] :
+                    enumType.memberTypes.get(getEnumMemberValue(<EnumMember>symbol.valueDeclaration)) :
                     enumType;
             }
             return links.declaredType;
@@ -4233,8 +4232,8 @@ namespace ts {
             if (!(<InterfaceTypeWithDeclaredMembers>type).declaredProperties) {
                 const symbol = type.symbol;
                 (<InterfaceTypeWithDeclaredMembers>type).declaredProperties = getNamedMembers(symbol.members);
-                (<InterfaceTypeWithDeclaredMembers>type).declaredCallSignatures = getSignaturesOfSymbol(symbol.members["__call"]);
-                (<InterfaceTypeWithDeclaredMembers>type).declaredConstructSignatures = getSignaturesOfSymbol(symbol.members["__new"]);
+                (<InterfaceTypeWithDeclaredMembers>type).declaredCallSignatures = getSignaturesOfSymbol(symbol.members.get("__call"));
+                (<InterfaceTypeWithDeclaredMembers>type).declaredConstructSignatures = getSignaturesOfSymbol(symbol.members.get("__new"));
                 (<InterfaceTypeWithDeclaredMembers>type).declaredStringIndexInfo = getIndexInfoOfSymbol(symbol, IndexKind.String);
                 (<InterfaceTypeWithDeclaredMembers>type).declaredNumberIndexInfo = getIndexInfoOfSymbol(symbol, IndexKind.Number);
             }
@@ -5623,7 +5622,7 @@ namespace ts {
             type.outerTypeParameters = undefined;
             type.localTypeParameters = typeParameters;
             type.instantiations = createMap<TypeReference>();
-            type.instantiations[getTypeListId(type.typeParameters)] = <GenericType>type;
+            type.instantiations.set(getTypeListId(type.typeParameters), <GenericType>type);
             type.target = <GenericType>type;
             type.typeArguments = type.typeParameters;
             type.thisType = <TypeParameter>createType(TypeFlags.TypeParameter);
@@ -5828,10 +5827,10 @@ namespace ts {
                 return types[0];
             }
             const id = getTypeListId(types);
-            let type = unionTypes[id];
+            let type = unionTypes.get(id);
             if (!type) {
                 const propagatedFlags = getPropagatingFlagsOfTypes(types, /*excludeKinds*/ TypeFlags.Nullable);
-                type = unionTypes[id] = <UnionType>createType(TypeFlags.Union | propagatedFlags);
+                type = setAndReturn(unionTypes, id, <UnionType>createType(TypeFlags.Union | propagatedFlags));
                 type.types = types;
                 type.aliasSymbol = aliasSymbol;
                 type.aliasTypeArguments = aliasTypeArguments;
@@ -5902,10 +5901,10 @@ namespace ts {
                     /*subtypeReduction*/ false, aliasSymbol, aliasTypeArguments);
             }
             const id = getTypeListId(typeSet);
-            let type = intersectionTypes[id];
+            let type = intersectionTypes.get(id);
             if (!type) {
                 const propagatedFlags = getPropagatingFlagsOfTypes(typeSet, /*excludeKinds*/ TypeFlags.Nullable);
-                type = intersectionTypes[id] = <IntersectionType>createType(TypeFlags.Intersection | propagatedFlags);
+                type = setAndReturn(intersectionTypes, id, <IntersectionType>createType(TypeFlags.Intersection | propagatedFlags));
                 type.types = typeSet;
                 type.aliasSymbol = aliasSymbol;
                 type.aliasTypeArguments = aliasTypeArguments;
@@ -6064,7 +6063,7 @@ namespace ts {
                 }
                 // Otherwise we defer the operation by creating an indexed access type.
                 const id = objectType.id + "," + indexType.id;
-                return indexedAccessTypes[id] || (indexedAccessTypes[id] = createIndexedAccessType(objectType, indexType));
+                return indexedAccessTypes.get(id) || setAndReturn(indexedAccessTypes, id, createIndexedAccessType(objectType, indexType));
             }
             const apparentObjectType = getApparentType(objectType);
             if (indexType.flags & TypeFlags.Union && !(indexType.flags & TypeFlags.Primitive)) {
@@ -6174,10 +6173,10 @@ namespace ts {
                 const isOwnProperty = !(rightProp.flags & SymbolFlags.Method) || isFromObjectLiteral;
                 const isSetterWithoutGetter = rightProp.flags & SymbolFlags.SetAccessor && !(rightProp.flags & SymbolFlags.GetAccessor);
                 if (getDeclarationModifierFlagsFromSymbol(rightProp) & (ModifierFlags.Private | ModifierFlags.Protected)) {
-                    skippedPrivateMembers[rightProp.name] = true;
+                    skippedPrivateMembers.set(rightProp.name, true);
                 }
                 else if (isOwnProperty && !isSetterWithoutGetter) {
-                    members[rightProp.name] = rightProp;
+                    members.set(rightProp.name, rightProp);
                 }
             }
             for (const leftProp of getPropertiesOfType(left)) {
@@ -6186,7 +6185,7 @@ namespace ts {
                     continue;
                 }
                 if (leftProp.name in members) {
-                    const rightProp = members[leftProp.name];
+                    const rightProp = members.get(leftProp.name);
                     const rightType = getTypeOfSymbol(rightProp);
                     if (maybeTypeOfKind(rightType, TypeFlags.Undefined) || rightProp.flags & SymbolFlags.Optional) {
                         const declarations: Declaration[] = concatenate(leftProp.declarations, rightProp.declarations);
@@ -6197,11 +6196,11 @@ namespace ts {
                         result.rightSpread = rightProp;
                         result.declarations = declarations;
                         result.isReadonly = isReadonlySymbol(leftProp) || isReadonlySymbol(rightProp);
-                        members[leftProp.name] = result;
+                        members.set(leftProp.name, result);
                     }
                 }
                 else {
-                    members[leftProp.name] = leftProp;
+                    members.set(leftProp.name, leftProp);
                 }
             }
             return createAnonymousType(undefined, members, emptyArray, emptyArray, stringIndexInfo, numberIndexInfo);
@@ -6231,7 +6230,7 @@ namespace ts {
 
         function getLiteralTypeForText(flags: TypeFlags, text: string) {
             const map = flags & TypeFlags.StringLiteral ? stringLiteralTypes : numericLiteralTypes;
-            return map[text] || (map[text] = createLiteralType(flags, text));
+            return map.get(text) || setAndReturn(map, text, createLiteralType(flags, text));
         }
 
         function getTypeFromLiteralTypeNode(node: LiteralTypeNode): Type {
@@ -7603,7 +7602,7 @@ namespace ts {
                     const maybeCache = maybeStack[depth];
                     // If result is definitely true, copy assumptions to global cache, else copy to next level up
                     const destinationCache = (result === Ternary.True || depth === 0) ? relation : maybeStack[depth - 1];
-                    copyProperties(maybeCache, destinationCache);
+                    copyMapProperties(maybeCache, destinationCache);
                 }
                 else {
                     // A false result goes straight into global cache (when something is false under assumptions it
@@ -15466,17 +15465,17 @@ namespace ts {
             }
 
             function addName(names: Map<Accessor>, location: Node, name: string, meaning: Accessor) {
-                const prev = names[name];
+                const prev = names.get(name);
                 if (prev) {
                     if (prev & meaning) {
                         error(location, Diagnostics.Duplicate_identifier_0, getTextOfNode(location));
                     }
                     else {
-                        names[name] = prev | meaning;
+                        names.set(name, prev | meaning);
                     }
                 }
                 else {
-                    names[name] = meaning;
+                    names.set(name, meaning);
                 }
             }
         }
