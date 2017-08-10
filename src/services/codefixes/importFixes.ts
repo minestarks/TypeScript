@@ -195,7 +195,7 @@ namespace ts.codefix {
                     const localSymbol = getLocalSymbolForExportDefault(defaultExport);
                     if (localSymbol && localSymbol.name === name && checkSymbolHasMeaning(localSymbol, currentTokenMeaning)) {
                         // check if this symbol is already used
-                        const symbolId = getUniqueSymbolId(localSymbol);
+                        const symbolId = getUniqueSymbolId(localSymbol, checker);
                         symbolIdActionMap.addActions(symbolId, getCodeActionForImport(moduleSymbol, undefined, /*isDefault*/ true));
                     }
                 }
@@ -203,19 +203,12 @@ namespace ts.codefix {
                 // check exports with the same name
                 const exportSymbolWithIdenticalName = checker.tryGetMemberInModuleExports(name, moduleSymbol);
                 if (exportSymbolWithIdenticalName && checkSymbolHasMeaning(exportSymbolWithIdenticalName, currentTokenMeaning)) {
-                    const symbolId = getUniqueSymbolId(exportSymbolWithIdenticalName);
+                    const symbolId = getUniqueSymbolId(exportSymbolWithIdenticalName, checker);
                     symbolIdActionMap.addActions(symbolId, getCodeActionForImport(moduleSymbol, undefined));
                 }
             }
 
             return symbolIdActionMap.getAllActions();
-
-            function getUniqueSymbolId(symbol: Symbol) {
-                if (symbol.flags & SymbolFlags.Alias) {
-                    return getSymbolId(checker.getAliasedSymbol(symbol));
-                }
-                return getSymbolId(symbol);
-            }
 
             function checkSymbolHasMeaning(symbol: Symbol, meaning: SemanticMeaning) {
                 const declarations = symbol.getDeclarations();
@@ -240,7 +233,7 @@ namespace ts.codefix {
                 }
 
                 function getImportDeclarations() {
-                    const moduleSymbolId = getUniqueSymbolId(moduleSymbol);
+                    const moduleSymbolId = getUniqueSymbolId(moduleSymbol, checker);
 
                     const cached = cachedImportDeclarations[moduleSymbolId];
                     if (cached) {
