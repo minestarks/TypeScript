@@ -1207,7 +1207,8 @@ namespace ts.server {
             return args.entryNames.reduce((accum: protocol.CompletionEntryDetails[], entryName: string) => {
                 const details = project.getLanguageService().getCompletionEntryDetails(file, position, entryName);
                 if (details) {
-                    accum.push(details);
+                    const mappedCodeActions = map(details.codeActions, action => this.mapCodeAction(action, scriptInfo));
+                    accum.push({ ...details, codeActions: mappedCodeActions });
                 }
                 return accum;
             }, []);
