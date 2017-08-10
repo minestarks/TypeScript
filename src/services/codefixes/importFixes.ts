@@ -229,7 +229,6 @@ namespace ts.codefix {
                 getCanonicalFileName;
                 newLineCharacter;
                 host;
-                symbolToken;
                 const cachedImportDeclarations = context.cachedImportDeclarations || [];
 
                 const existingDeclarations = getImportDeclarations();
@@ -321,7 +320,7 @@ namespace ts.codefix {
                         }
                     }
 
-                    if (namespaceImportDeclaration) {
+                    if (symbolToken && namespaceImportDeclaration) {
                         actions.push(getCodeActionForNamespaceImport(namespaceImportDeclaration));
                     }
 
@@ -403,7 +402,7 @@ namespace ts.codefix {
                         return createCodeAction(
                             Diagnostics.Change_0_to_1,
                             [name, `${namespacePrefix}.${name}`],
-                            createChangeTracker().replaceNode(sourceFile, token, createPropertyAccess(createIdentifier(namespacePrefix), name)).getChanges(),
+                            createChangeTracker().replaceNode(sourceFile, symbolToken, createPropertyAccess(createIdentifier(namespacePrefix), name)).getChanges(),
                             "CodeChange"
                         );
                     }
