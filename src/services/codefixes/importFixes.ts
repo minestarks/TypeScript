@@ -547,19 +547,18 @@ namespace ts.codefix {
             Diagnostics._0_refers_to_a_UMD_global_but_the_current_file_is_a_module_Consider_adding_an_import_instead.code
         ],
         getCodeActions: (context: CodeFixContext) => {
-            convertToImportCodeFixContext;
             const sourceFile = context.sourceFile;
-            const checker = context.program.getTypeChecker();
             const allSourceFiles = context.program.getSourceFiles();
+            const importFixContext = convertToImportCodeFixContext(context);
 
-            const token = getTokenAtPosition(sourceFile, context.span.start);
-            const name = token.getText();
+            const checker = importFixContext.checker;
+            const token = importFixContext.symbolToken;
             const symbolIdActionMap = new ImportCodeActionMap();
-
             const currentTokenMeaning = getMeaningFromLocation(token);
+
             if (context.errorCode === Diagnostics._0_refers_to_a_UMD_global_but_the_current_file_is_a_module_Consider_adding_an_import_instead.code) {
                 const symbol = checker.getAliasedSymbol(checker.getSymbolAtLocation(token));
-                return getCodeActionForImport(symbol, undefined, /*isDefault*/ false, /*isNamespaceImport*/ true);
+                return getCodeActionForImport(symbol, importFixContext, /*isDefault*/ false, /*isNamespaceImport*/ true);
             }
 
             const candidateModules = checker.getAmbientModules();
@@ -576,18 +575,18 @@ namespace ts.codefix {
                 const defaultExport = checker.tryGetMemberInModuleExports("default", moduleSymbol);
                 if (defaultExport) {
                     const localSymbol = getLocalSymbolForExportDefault(defaultExport);
-                    if (localSymbol && localSymbol.name === name && checkSymbolHasMeaning(localSymbol, currentTokenMeaning)) {
+                    if (localSymbol && localSymbol.name === importFixContext.symbolName && checkSymbolHasMeaning(localSymbol, currentTokenMeaning)) {
                         // check if this symbol is already used
                         const symbolId = getUniqueSymbolId(localSymbol, checker);
-                        symbolIdActionMap.addActions(symbolId, getCodeActionForImport(moduleSymbol, undefined, /*isDefault*/ true));
+                        symbolIdActionMap.addActions(symbolId, getCodeActionForImport(moduleSymbol, importFixContext, /*isDefault*/ true));
                     }
                 }
 
                 // check exports with the same name
-                const exportSymbolWithIdenticalName = checker.tryGetMemberInModuleExports(name, moduleSymbol);
+                const exportSymbolWithIdenticalName = checker.tryGetMemberInModuleExports(importFixContext.symbolName, moduleSymbol);
                 if (exportSymbolWithIdenticalName && checkSymbolHasMeaning(exportSymbolWithIdenticalName, currentTokenMeaning)) {
                     const symbolId = getUniqueSymbolId(exportSymbolWithIdenticalName, checker);
-                    symbolIdActionMap.addActions(symbolId, getCodeActionForImport(moduleSymbol, undefined));
+                    symbolIdActionMap.addActions(symbolId, getCodeActionForImport(moduleSymbol, importFixContext));
                 }
             }
 
