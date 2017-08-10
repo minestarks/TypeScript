@@ -161,7 +161,6 @@ namespace ts.codefix {
         let lastImportDeclaration: Node;
         const { symbolName: name, sourceFile, getCanonicalFileName, newLineCharacter, host, checker, symbolToken, compilerOptions } = context;
         getCanonicalFileName;
-        host;
         const cachedImportDeclarations = context.cachedImportDeclarations || [];
 
         const existingDeclarations = getImportDeclarations();
@@ -451,7 +450,7 @@ namespace ts.codefix {
                 }
 
                 function tryGetModuleNameFromTypeRoots() {
-                    const typeRoots = getEffectiveTypeRoots(options, context.host);
+                    const typeRoots = getEffectiveTypeRoots(options, host);
                     if (typeRoots) {
                         const normalizedTypeRoots = map(typeRoots, typeRoot => toPath(typeRoot, /*basePath*/ undefined, getCanonicalFileName));
                         for (const typeRoot of normalizedTypeRoots) {
@@ -490,7 +489,7 @@ namespace ts.codefix {
                     else {
                         try {
                             const moduleDirectory = getDirectoryPath(moduleFileName);
-                            const packageJsonContent = JSON.parse(context.host.readFile(combinePaths(moduleDirectory, "package.json")));
+                            const packageJsonContent = JSON.parse(host.readFile(combinePaths(moduleDirectory, "package.json")));
                             if (packageJsonContent) {
                                 const mainFile = packageJsonContent.main || packageJsonContent.typings;
                                 if (mainFile) {
