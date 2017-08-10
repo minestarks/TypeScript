@@ -160,7 +160,6 @@ namespace ts.codefix {
     export function getCodeActionForImport(moduleSymbol: Symbol, context: ImportCodeFixContext, isDefault?: boolean, isNamespaceImport?: boolean): ImportCodeAction[] {
         let lastImportDeclaration: Node;
         const { symbolName: name, sourceFile, getCanonicalFileName, newLineCharacter, host, checker, symbolToken, compilerOptions } = context;
-        getCanonicalFileName;
         const cachedImportDeclarations = context.cachedImportDeclarations || [];
 
         const existingDeclarations = getImportDeclarations();
