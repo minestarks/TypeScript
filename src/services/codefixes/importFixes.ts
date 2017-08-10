@@ -240,6 +240,10 @@ namespace ts.codefix {
                     }
                 }
 
+                function createChangeTracker() {
+                    return textChanges.ChangeTracker.fromCodeFixContext(context);
+                }
+
                 function getCodeActionsForExistingImport(declarations: (ImportDeclaration | ImportEqualsDeclaration)[]): ImportCodeAction[] {
                     const actions: ImportCodeAction[] = [];
 
@@ -568,10 +572,6 @@ namespace ts.codefix {
                     }
                 }
 
-            }
-
-            function createChangeTracker() {
-                return textChanges.ChangeTracker.fromCodeFixContext(context);
             }
 
             function createCodeAction(
