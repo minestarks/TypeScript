@@ -160,8 +160,6 @@ namespace ts.codefix {
             const name = token.getText();
             const symbolIdActionMap = new ImportCodeActionMap();
 
-            // this is a module id -> module import declaration map
-            const cachedImportDeclarations: (ImportDeclaration | ImportEqualsDeclaration)[][] = [];
             let lastImportDeclaration: Node;
 
             const currentTokenMeaning = getMeaningFromLocation(token);
@@ -219,6 +217,8 @@ namespace ts.codefix {
                 newLineCharacter;
                 host;
                 symbolToken;
+                const cachedImportDeclarations = context.cachedImportDeclarations || [];
+
                 const existingDeclarations = getImportDeclarations();
                 if (existingDeclarations.length > 0) {
                     // With an existing import statement, there are more than one actions the user can do.
