@@ -3,6 +3,8 @@
 /* @internal */
 namespace ts.Completions {
     export type Log = (message: string) => void;
+    
+    export type SymbolOriginInfo = { moduleSymbol: Symbol, isDefaultExport?: boolean };
 
     export function getCompletionsAtPosition(host: LanguageServiceHost, typeChecker: TypeChecker, log: Log, compilerOptions: CompilerOptions, sourceFile: SourceFile, position: number): CompletionInfo | undefined {
         if (isInReferenceComment(sourceFile, position)) {
