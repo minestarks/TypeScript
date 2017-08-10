@@ -128,6 +128,20 @@ namespace ts.codefix {
         }
     }
 
+    function createCodeAction(
+        description: DiagnosticMessage,
+        diagnosticArgs: string[],
+        changes: FileTextChanges[],
+        kind: ImportCodeActionKind,
+        moduleSpecifier?: string): ImportCodeAction {
+        return {
+            description: formatMessage.apply(undefined, [undefined, description].concat(<any[]>diagnosticArgs)),
+            changes,
+            kind,
+            moduleSpecifier
+        };
+    }
+
     function convertToImportCodeFixContext(context: CodeFixContext) {
         const useCaseSensitiveFileNames = context.host.useCaseSensitiveFileNames ? context.host.useCaseSensitiveFileNames() : false;
         const checker = context.program.getTypeChecker();
@@ -593,21 +607,7 @@ namespace ts.codefix {
                     }
                 }
 
-            }
-
-            function createCodeAction(
-                description: DiagnosticMessage,
-                diagnosticArgs: string[],
-                changes: FileTextChanges[],
-                kind: ImportCodeActionKind,
-                moduleSpecifier?: string): ImportCodeAction {
-                return {
-                    description: formatMessage.apply(undefined, [undefined, description].concat(<any[]>diagnosticArgs)),
-                    changes,
-                    kind,
-                    moduleSpecifier
-                };
-            }
+            }            
         }
     });
 }
