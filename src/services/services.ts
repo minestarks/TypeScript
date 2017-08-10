@@ -1340,8 +1340,9 @@ namespace ts {
             return Completions.getCompletionsAtPosition(host, program.getTypeChecker(), log, program.getCompilerOptions(), getValidSourceFile(fileName), position);
         }
 
-        function getCompletionEntryDetails(fileName: string, position: number, entryName: string): CompletionEntryDetails {
+        function getCompletionEntryDetails(fileName: string, position: number, entryName: string, formattingOptions?: FormatCodeSettings): CompletionEntryDetails {
             synchronizeHostData();
+            formattingOptions;
             return Completions.getCompletionEntryDetails(program.getTypeChecker(), log, program.getCompilerOptions(), getValidSourceFile(fileName), position, entryName);
         }
 
