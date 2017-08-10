@@ -20,7 +20,7 @@ namespace ts.Completions {
             return undefined;
         }
 
-        const { symbols, isGlobalCompletion, isMemberCompletion, isNewIdentifierLocation, location, requestJsDocTagName, requestJsDocTag } = completionData;
+        const { symbols, isGlobalCompletion, isMemberCompletion, isNewIdentifierLocation, location, requestJsDocTagName, requestJsDocTag, symbolToOriginInfoMap } = completionData;
 
         if (requestJsDocTagName) {
             // If the current position is a jsDoc tag name, only tag names should be provided for completion
@@ -35,7 +35,7 @@ namespace ts.Completions {
         const entries: CompletionEntry[] = [];
 
         if (isSourceFileJavaScript(sourceFile)) {
-            const uniqueNames = getCompletionEntriesFromSymbols(symbols, entries, location, /*performCharacterChecks*/ true, typeChecker, compilerOptions.target, log);
+            const uniqueNames = getCompletionEntriesFromSymbols(symbols, entries, location, /*performCharacterChecks*/ true, typeChecker, compilerOptions.target, log, symbolToOriginInfoMap);
             addRange(entries, getJavaScriptCompletionEntries(sourceFile, location.pos, uniqueNames, compilerOptions.target));
         }
         else {
@@ -59,7 +59,7 @@ namespace ts.Completions {
                 }
             }
 
-            getCompletionEntriesFromSymbols(symbols, entries, location, /*performCharacterChecks*/ true, typeChecker, compilerOptions.target, log);
+            getCompletionEntriesFromSymbols(symbols, entries, location, /*performCharacterChecks*/ true, typeChecker, compilerOptions.target, log, symbolToOriginInfoMap);
         }
 
         // Add keywords if this is not a member completion list
@@ -123,7 +123,8 @@ namespace ts.Completions {
         };
     }
 
-    function getCompletionEntriesFromSymbols(symbols: Symbol[], entries: Push<CompletionEntry>, location: Node, performCharacterChecks: boolean, typeChecker: TypeChecker, target: ScriptTarget, log: Log): Map<string> {
+    function getCompletionEntriesFromSymbols(symbols: Symbol[], entries: Push<CompletionEntry>, location: Node, performCharacterChecks: boolean, typeChecker: TypeChecker, target: ScriptTarget, log: Log, symbolToOriginInfoMap?: Map<SymbolOriginInfo>): Map<string> {
+        symbolToOriginInfoMap;
         const start = timestamp();
         const uniqueNames = createMap<string>();
         if (symbols) {
@@ -286,7 +287,8 @@ namespace ts.Completions {
         // Compute all the completion symbols again.
         const completionData = getCompletionData(typeChecker, log, sourceFile, position, allSourceFiles);
         if (completionData) {
-            const { symbols, location } = completionData;
+            const { symbols, location, symbolToOriginInfoMap } = completionData;
+            symbolToOriginInfoMap;
 
             // Find the symbol with the matching entry name.
             // We don't need to perform character checks here because we're only comparing the
@@ -412,7 +414,7 @@ namespace ts.Completions {
             }
 
             if (requestJsDocTagName || requestJsDocTag) {
-                return { symbols: undefined, isGlobalCompletion: false, isMemberCompletion: false, isNewIdentifierLocation: false, location: undefined, isRightOfDot: false, requestJsDocTagName, requestJsDocTag };
+                return { symbols: undefined, isGlobalCompletion: false, isMemberCompletion: false, isNewIdentifierLocation: false, location: undefined, isRightOfDot: false, requestJsDocTagName, requestJsDocTag, symbolToOriginInfoMap: undefined };
             }
 
             if (!insideJsDocTagExpression) {
@@ -512,6 +514,7 @@ namespace ts.Completions {
         let isMemberCompletion: boolean;
         let isNewIdentifierLocation: boolean;
         let symbols: Symbol[] = [];
+        const symbolToOriginInfoMap = createMap<SymbolOriginInfo>();
 
         if (isRightOfDot) {
             getTypeScriptMemberSymbols();
@@ -548,7 +551,7 @@ namespace ts.Completions {
 
         log("getCompletionData: Semantic work: " + (timestamp() - semanticStart));
 
-        return { symbols, isGlobalCompletion, isMemberCompletion, isNewIdentifierLocation, location, isRightOfDot: (isRightOfDot || isRightOfOpenTag), requestJsDocTagName, requestJsDocTag };
+        return { symbols, isGlobalCompletion, isMemberCompletion, isNewIdentifierLocation, location, isRightOfDot: (isRightOfDot || isRightOfOpenTag), requestJsDocTagName, requestJsDocTag, symbolToOriginInfoMap };
 
         function getTypeScriptMemberSymbols(): void {
             // Right of dot member completion list
@@ -687,6 +690,7 @@ namespace ts.Completions {
         }
 
         function getSymbolsFromOtherSourceFileExports(_tokenText: string) {
+            symbolToOriginInfoMap;
             allSourceFiles;
         }
 
