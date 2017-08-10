@@ -293,6 +293,8 @@ namespace ts.Completions {
             const symbol = forEach(symbols, s => getCompletionEntryDisplayNameForSymbol(typeChecker, s, compilerOptions.target, /*performCharacterChecks*/ false, location) === entryName ? s : undefined);
 
             if (symbol) {
+                let codeActions: CodeAction[];
+
                 const { displayParts, documentation, symbolKind, tags } = SymbolDisplay.getSymbolDisplayPartsDocumentationAndSymbolKind(typeChecker, symbol, sourceFile, location, location, SemanticMeaning.All);
                 return {
                     name: entryName,
@@ -300,7 +302,8 @@ namespace ts.Completions {
                     kind: symbolKind,
                     displayParts,
                     documentation,
-                    tags
+                    tags,
+                    codeActions
                 };
             }
         }
@@ -314,7 +317,8 @@ namespace ts.Completions {
                 kindModifiers: ScriptElementKindModifier.none,
                 displayParts: [displayPart(entryName, SymbolDisplayPartKind.keyword)],
                 documentation: undefined,
-                tags: undefined
+                tags: undefined,
+                codeActions: undefined
             };
         }
 
