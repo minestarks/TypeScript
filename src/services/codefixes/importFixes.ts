@@ -167,7 +167,7 @@ namespace ts.codefix {
             const currentTokenMeaning = getMeaningFromLocation(token);
             if (context.errorCode === Diagnostics._0_refers_to_a_UMD_global_but_the_current_file_is_a_module_Consider_adding_an_import_instead.code) {
                 const symbol = checker.getAliasedSymbol(checker.getSymbolAtLocation(token));
-                return getCodeActionForImport(symbol, /*isDefault*/ false, /*isNamespaceImport*/ true);
+                return getCodeActionForImport(symbol, undefined, /*isDefault*/ false, /*isNamespaceImport*/ true);
             }
 
             const candidateModules = checker.getAmbientModules();
@@ -187,7 +187,7 @@ namespace ts.codefix {
                     if (localSymbol && localSymbol.name === name && checkSymbolHasMeaning(localSymbol, currentTokenMeaning)) {
                         // check if this symbol is already used
                         const symbolId = getUniqueSymbolId(localSymbol);
-                        symbolIdActionMap.addActions(symbolId, getCodeActionForImport(moduleSymbol, /*isDefault*/ true));
+                        symbolIdActionMap.addActions(symbolId, getCodeActionForImport(moduleSymbol, undefined, /*isDefault*/ true));
                     }
                 }
 
@@ -195,7 +195,7 @@ namespace ts.codefix {
                 const exportSymbolWithIdenticalName = checker.tryGetMemberInModuleExports(name, moduleSymbol);
                 if (exportSymbolWithIdenticalName && checkSymbolHasMeaning(exportSymbolWithIdenticalName, currentTokenMeaning)) {
                     const symbolId = getUniqueSymbolId(exportSymbolWithIdenticalName);
-                    symbolIdActionMap.addActions(symbolId, getCodeActionForImport(moduleSymbol));
+                    symbolIdActionMap.addActions(symbolId, getCodeActionForImport(moduleSymbol, undefined));
                 }
             }
 
@@ -213,7 +213,12 @@ namespace ts.codefix {
                 return declarations ? some(symbol.declarations, decl => !!(getMeaningFromDeclaration(decl) & meaning)) : false;
             }
 
-            function getCodeActionForImport(moduleSymbol: Symbol, isDefault?: boolean, isNamespaceImport?: boolean): ImportCodeAction[] {
+            function getCodeActionForImport(moduleSymbol: Symbol, context: ImportCodeFixContext, isDefault?: boolean, isNamespaceImport?: boolean): ImportCodeAction[] {
+                const { symbolName: name, sourceFile, getCanonicalFileName, newLineCharacter, host, checker, symbolToken, compilerOptions } = context;
+                getCanonicalFileName;
+                newLineCharacter;
+                host;
+                symbolToken;
                 const existingDeclarations = getImportDeclarations(moduleSymbol);
                 if (existingDeclarations.length > 0) {
                     // With an existing import statement, there are more than one actions the user can do.
@@ -434,7 +439,7 @@ namespace ts.codefix {
                         const fileName = sourceFile.fileName;
                         const moduleFileName = moduleSymbol.valueDeclaration.getSourceFile().fileName;
                         const sourceDirectory = getDirectoryPath(fileName);
-                        const options = context.program.getCompilerOptions();
+                        const options = compilerOptions;
 
                         return tryGetModuleNameFromAmbientModule() ||
                             tryGetModuleNameFromTypeRoots() ||
