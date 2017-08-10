@@ -174,8 +174,6 @@ namespace ts.codefix {
             const name = token.getText();
             const symbolIdActionMap = new ImportCodeActionMap();
 
-            let lastImportDeclaration: Node;
-
             const currentTokenMeaning = getMeaningFromLocation(token);
             if (context.errorCode === Diagnostics._0_refers_to_a_UMD_global_but_the_current_file_is_a_module_Consider_adding_an_import_instead.code) {
                 const symbol = checker.getAliasedSymbol(checker.getSymbolAtLocation(token));
@@ -226,6 +224,7 @@ namespace ts.codefix {
             }
 
             function getCodeActionForImport(moduleSymbol: Symbol, context: ImportCodeFixContext, isDefault?: boolean, isNamespaceImport?: boolean): ImportCodeAction[] {
+                let lastImportDeclaration: Node;
                 const { symbolName: name, sourceFile, getCanonicalFileName, newLineCharacter, host, checker, symbolToken, compilerOptions } = context;
                 getCanonicalFileName;
                 newLineCharacter;
