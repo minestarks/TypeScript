@@ -124,7 +124,6 @@ namespace ts.Completions {
     }
 
     function getCompletionEntriesFromSymbols(symbols: Symbol[], entries: Push<CompletionEntry>, location: Node, performCharacterChecks: boolean, typeChecker: TypeChecker, target: ScriptTarget, log: Log, symbolToOriginInfoMap?: Map<SymbolOriginInfo>): Map<string> {
-        symbolToOriginInfoMap;
         const start = timestamp();
         const uniqueNames = createMap<string>();
         if (symbols) {
@@ -133,6 +132,9 @@ namespace ts.Completions {
                 if (entry) {
                     const id = escapeIdentifier(entry.name);
                     if (!uniqueNames.get(id)) {
+                        if (symbolToOriginInfoMap && symbolToOriginInfoMap.has(getUniqueSymbolIdAsString(symbol, typeChecker))) {
+                            entry.hasAction = true;
+                        }
                         entries.push(entry);
                         uniqueNames.set(id, id);
                     }
