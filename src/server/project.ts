@@ -1162,6 +1162,10 @@ namespace ts.server {
                 this.projectService.logger.info(`Plugin activation failed: ${e}`);
             }
         }
+
+        getPythiaModel() {
+            return this.projectService.getPythiaModel();
+        }
     }
 
     /**

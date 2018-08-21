@@ -170,6 +170,14 @@ namespace ts {
         packageName: string;
     }
 
+    export interface PythiaModel {
+        model: {
+            [index: string]: {
+                [index: string]: [string[], string[]]
+            }
+        }
+    };
+
     //
     // Public interface of the host of a language service instance.
     //
@@ -231,6 +239,8 @@ namespace ts {
 
         isKnownTypesPackageName?(name: string): boolean;
         installPackage?(options: InstallPackageOptions): Promise<ApplyCodeActionCommandResult>;
+
+        getPythiaModel?(): PythiaModel | undefined;
     }
 
     export interface UserPreferences {
@@ -591,7 +601,7 @@ namespace ts {
      */
     export interface RefactorEditInfo {
         edits: FileTextChanges[];
-        renameFilename?: string ;
+        renameFilename?: string;
         renameLocation?: number;
         commands?: CodeActionCommand[];
     }
@@ -863,6 +873,7 @@ namespace ts {
         hasAction?: true;
         source?: string;
         isRecommended?: true;
+        isPythiaRecommendation?: true;
     }
 
     export interface CompletionEntryDetails {

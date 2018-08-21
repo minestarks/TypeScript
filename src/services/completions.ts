@@ -55,7 +55,9 @@ namespace ts.Completions {
             return getLabelCompletionAtPosition(contextToken.parent);
         }
 
-        const completionData = getCompletionData(program, log, sourceFile, isUncheckedFile(sourceFile, compilerOptions), position, preferences, /*detailsEntryId*/ undefined);
+        const pythiaModel = host.getPythiaModel && host.getPythiaModel();
+
+        const completionData = getCompletionData(program, log, sourceFile, isUncheckedFile(sourceFile, compilerOptions), position, preferences, /*detailsEntryId*/ undefined, pythiaModel);
         if (!completionData) {
             return undefined;
         }
@@ -155,6 +157,14 @@ namespace ts.Completions {
 
         for (const literal of literals) {
             entries.push(createCompletionEntryForLiteral(literal));
+        }
+
+        if (completionData.pythiaRecommendedWords.length > 0) {
+            for (const entry of entries) {
+                if (completionData.pythiaRecommendedWords.find(n => n === entry.name)) {
+                    entry.isPythiaRecommendation = true;
+                }
+            }
         }
 
         return { isGlobalCompletion: isInSnippetScope, isMemberCompletion, isNewIdentifierLocation, entries };
@@ -447,7 +457,7 @@ namespace ts.Completions {
                     // f("/*completion position*/")
                     return argumentInfo ? getStringLiteralCompletionsFromSignature(argumentInfo, typeChecker) : fromContextualType();
                 }
-                // falls through (is `require("")` or `import("")`)
+            // falls through (is `require("")` or `import("")`)
 
             case SyntaxKind.ImportDeclaration:
             case SyntaxKind.ExportDeclaration:
@@ -497,8 +507,8 @@ namespace ts.Completions {
         return type.isUnion()
             ? flatMap(type.types, t => getStringLiteralTypes(t, uniques))
             : type.isStringLiteral() && !(type.flags & TypeFlags.EnumLiteral) && addToSeen(uniques, type.value)
-            ? [type]
-            : emptyArray;
+                ? [type]
+                : emptyArray;
     }
 
     interface SymbolCompletion {
@@ -542,7 +552,7 @@ namespace ts.Completions {
         return origin && originIsExport(origin) && origin.isDefaultExport && symbol.escapedName === InternalSymbolName.Default
             // Name of "export default foo;" is "foo". Name of "export default 0" is the filename converted to camelCase.
             ? firstDefined(symbol.declarations, d => isExportAssignment(d) && isIdentifier(d.expression) ? d.expression.text : undefined)
-                || codefix.moduleSymbolToValidIdentifier(origin.moduleSymbol, target)
+            || codefix.moduleSymbolToValidIdentifier(origin.moduleSymbol, target)
             : symbol.name;
     }
 
@@ -702,6 +712,7 @@ namespace ts.Completions {
         readonly recommendedCompletion: Symbol | undefined;
         readonly previousToken: Node | undefined;
         readonly isJsxInitializer: IsJsxInitializer;
+        readonly pythiaRecommendedWords: ReadonlyArray<string>;
     }
     type Request = { readonly kind: CompletionDataKind.JsDocTagName | CompletionDataKind.JsDocTag } | { readonly kind: CompletionDataKind.JsDocParameterName, tag: JSDocParameterTag };
 
@@ -753,9 +764,9 @@ namespace ts.Completions {
                     // At `,`, treat this as the next argument after the comma.
                     ? checker.getContextualTypeForArgumentAtIndex(argInfo.invocation, argInfo.argumentIndex + (previousToken.kind === SyntaxKind.CommaToken ? 1 : 0))
                     : isEqualityOperatorKind(previousToken.kind) && isBinaryExpression(parent) && isEqualityOperatorKind(parent.operatorToken.kind)
-                    // completion at `x ===/**/` should be for the right side
-                    ? checker.getTypeAtLocation(parent.left)
-                    : checker.getContextualType(previousToken as Expression);
+                        // completion at `x ===/**/` should be for the right side
+                        ? checker.getTypeAtLocation(parent.left)
+                        : checker.getContextualType(previousToken as Expression);
         }
     }
 
@@ -799,6 +810,7 @@ namespace ts.Completions {
         position: number,
         preferences: Pick<UserPreferences, "includeCompletionsForModuleExports" | "includeCompletionsWithInsertText">,
         detailsEntryId: CompletionEntryIdentifier | undefined,
+        pythiaModel?: PythiaModel
     ): CompletionData | Request | undefined {
         const typeChecker = program.getTypeChecker();
 
@@ -1002,6 +1014,7 @@ namespace ts.Completions {
         let keywordFilters = KeywordCompletionFilters.None;
         let symbols: Symbol[] = [];
         const symbolToOriginInfoMap: SymbolOriginInfoMap = [];
+        let pythiaRecommendedWords: string[] = [];
 
         if (isRightOfDot) {
             getTypeScriptMemberSymbols();
@@ -1035,7 +1048,7 @@ namespace ts.Completions {
         const literals = mapDefined(contextualType && (contextualType.isUnion() ? contextualType.types : [contextualType]), t => t.isLiteral() ? t.value : undefined);
 
         const recommendedCompletion = previousToken && contextualType && getRecommendedCompletion(previousToken, contextualType, typeChecker);
-        return { kind: CompletionDataKind.Data, symbols, completionKind, isInSnippetScope, propertyAccessToConvert, isNewIdentifierLocation, location, keywordFilters, literals, symbolToOriginInfoMap, recommendedCompletion, previousToken, isJsxInitializer };
+        return { kind: CompletionDataKind.Data, symbols, completionKind, isInSnippetScope, propertyAccessToConvert, isNewIdentifierLocation, location, keywordFilters, literals, symbolToOriginInfoMap, recommendedCompletion, previousToken, isJsxInitializer, pythiaRecommendedWords };
 
         type JSDocTagWithTypeExpression = JSDocParameterTag | JSDocPropertyTag | JSDocReturnTag | JSDocTypeTag | JSDocTypedefTag;
 
@@ -1119,6 +1132,92 @@ namespace ts.Completions {
                         addPropertySymbol(symbol);
                     }
                 }
+            }
+
+            if (pythiaModel) {
+                const typeName = GetTypeNameForPythia(type, node);
+                if (typeName) {
+                    const priorInvocationSequencesToSuggestions = pythiaModel.model[typeName];
+
+                    if (priorInvocationSequencesToSuggestions) {
+                        const sequences = GetPriorAccessSequences(typeName);
+
+                        for (const seq of sequences) {
+                            const suggestionPair = priorInvocationSequencesToSuggestions[seq];
+                            const suggestions =  suggestionPair && suggestionPair[0];
+                            // TODO: if in conditional, and there are elements in the second array, go with that one
+                            if (suggestions) {
+                                pythiaRecommendedWords.push(...suggestions);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function GetPriorAccessSequences(typeName: string): string[] {
+            const accesses: string[] = [];
+            GatherAccesses(typeName, node, accesses);
+            accesses.reverse();
+
+            const seqs: string[] = [];
+            seqs.push("N");
+            if (accesses.length > 0) {
+                seqs.push("N~" + accesses[0]);
+            }
+            if (accesses.length > 1) {
+                seqs.push(accesses[accesses.length - 1] + "~" + accesses[accesses.length - 2]);
+            }
+
+            seqs.reverse();
+
+            return seqs;
+        }
+
+        function GatherAccesses(typeName: string, until: Node, results: string[]) {
+            let root = until;
+            while(root.parent) {
+                root = root.parent;
+            }
+
+            GatherAccessesInCurrentAndChildren(typeName, root, until, results);
+        }
+
+        function GatherAccessesInCurrentAndChildren(typeName: string, current: Node, until: Node, results: string[]) {
+            if (current.getStart() > until.getStart()) {
+                return true;
+            }
+
+            current.forEachChild(child => GatherAccessesInCurrentAndChildren(typeName, child, until, results));
+
+            if (ts.isPropertyAccessExpression(current) && current.expression != until) {
+                const type = GetTypeNameForPythia(typeChecker.getTypeAtLocation(current.expression), current.expression);
+                if (type === typeName) {
+                    results.push(current.name.text);
+                }
+            }
+        }
+
+        function GetTypeNameForPythia(type: Type, leftOfDot: Node) {
+            const typeSymbol = type.aliasSymbol || type.getSymbol();
+            if (!typeSymbol) {
+                if ((type.getFlags() & ts.TypeFlags.NonPrimitive) == 0) {
+                    if ((type.flags & ts.TypeFlags.Any) !== 0) {
+                        if (ts.isIdentifier(leftOfDot)) {
+                            //console.log('using name ' + leftOfDot.text + ' instead of any type ');
+                            return leftOfDot.text;
+                        }
+                    } else if ((type.flags & ts.TypeFlags.StringLike) !== 0) {
+                        return "string";
+                    } else if ((type.flags & ts.TypeFlags.Boolean) !== 0) {
+                        return "boolean";
+                    } else if ((type.flags & ts.TypeFlags.NumberLike) !== 0) {
+                        return "number";
+                    }
+                }
+            } else {
+                return typeChecker.getFullyQualifiedName(typeSymbol);
             }
         }
 
@@ -1527,7 +1626,7 @@ namespace ts.Completions {
             //   3. at the end of a regular expression (due to trailing flags like '/foo/g').
             return (isRegularExpressionLiteral(contextToken) || isStringTextContainingNode(contextToken)) && (
                 rangeContainsPositionExclusive(createTextRangeFromSpan(createTextSpanFromNode(contextToken)), position) ||
-                    position === contextToken.end && (!!contextToken.isUnterminated || isRegularExpressionLiteral(contextToken)));
+                position === contextToken.end && (!!contextToken.isUnterminated || isRegularExpressionLiteral(contextToken)));
         }
 
         /**
@@ -2024,8 +2123,8 @@ namespace ts.Completions {
 
             return baseSymbols.filter(propertySymbol =>
                 !existingMemberNames.has(propertySymbol.escapedName) &&
-                    !!propertySymbol.declarations &&
-                    !(getDeclarationModifierFlagsFromSymbol(propertySymbol) & ModifierFlags.Private));
+                !!propertySymbol.declarations &&
+                !(getDeclarationModifierFlagsFromSymbol(propertySymbol) & ModifierFlags.Private));
         }
 
         /**

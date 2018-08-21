@@ -437,6 +437,8 @@ namespace ts.server {
         /*@internal*/
         readonly watchFactory: WatchFactory<WatchType, Project>;
 
+        private pythiaModel: ts.PythiaModel;
+
         constructor(opts: ProjectServiceOptions) {
             this.host = opts.host;
             this.logger = opts.logger;
@@ -2549,6 +2551,14 @@ namespace ts.server {
             }
 
             return false;
+        }
+
+        getPythiaModel(): ts.PythiaModel | undefined {
+            if(this.pythiaModel === undefined && this.host.fileExists('./pythiaModel.json')) {
+                const json = this.host.readFile('./pythiaModel.json', 'utf-8');
+                this.pythiaModel = json ? JSON.parse(json) : {};
+            }
+            return this.pythiaModel || undefined;
         }
     }
 
