@@ -1030,7 +1030,9 @@ namespace ts.server {
                     !project.projectRootPath || !this.compilerOptionsForInferredProjectsPerProjectRoot.has(project.projectRootPath)) {
                     project.setCompilerOptions(compilerOptions);
                     project.setWatchOptions(watchOptions);
-                    project.setTypeAcquisition(typeAcquisition);
+                    if (typeAcquisition) {
+                        project.setTypeAcquisition(typeAcquisition);
+                    }
                     project.compileOnSaveEnabled = compilerOptions.compileOnSave!;
                     project.markAsDirty();
                     this.delayUpdateProjectGraph(project);
